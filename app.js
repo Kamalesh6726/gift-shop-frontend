@@ -163,8 +163,21 @@ function renderItems() {
 
 function updateDashboard() {
   totalItems.textContent = items.length;
-  totalQty.textContent = items.reduce((a,b)=>a+b.qty,0);
-  totalSales.textContent = "₹" + items.reduce((s,p)=>s+p.sales.reduce((x,y)=>x+y.amount,0),0);
+  totalQty.textContent = items.reduce((a,b) => a + b.qty, 0);
+  
+  // Calculate TODAY'S revenue only (starts fresh from 0 each day)
+  const today = new Date().toISOString().split("T")[0];
+  let todayRevenue = 0;
+  
+  items.forEach(item => {
+    item.sales.forEach(sale => {
+      if (sale.date === today) {
+        todayRevenue += sale.amount;
+      }
+    });
+  });
+  
+  totalSales.textContent = "₹" + todayRevenue;
 }
 
 /* ================= PROFIT GRAPH ================= */
@@ -189,13 +202,24 @@ function renderMonthlyProfitChart() {
 function closeShop() {
   const today = new Date().toISOString().split("T")[0];
   let total = 0;
-  items.forEach(i=>i.sales.forEach(s=>{ if(s.date===today) total+=s.amount; }));
-  alert(`SHOP CLOSED\nDate: ${today}\nRevenue: ₹${total}`);
-
+  
+  // Calculate today's total revenue
+  items.forEach(i => {
+    i.sales.forEach(s => { 
+      if(s.date === today) total += s.amount; 
+    });
+  });
+  
+  alert(`SHOP CLOSED\nDate: ${today}\nToday's Revenue: ₹${total}\n\nNext day revenue will start fresh from 0.`);
+  
   fetch("https://gift-shop-1-jpqm.onrender.com/api/close-shop",{
     method:"POST",
     headers:{ "Content-Type":"application/json" },
-    body:JSON.stringify({ total })
+    body:JSON.stringify({ 
+      total,
+      date: today,
+      action: "daily_close" 
+    })
   });
 }
 
@@ -204,6 +228,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   renderItems();
   updateDashboard();
 });
+
 const AADHAAR_KEY = "aadhaar_payments";
 
 function saveAadhaarPayment() {
